@@ -190,7 +190,7 @@ def get_anchor_intermediate_pos(anchor_pos_19, anchor_pos_37, alignment):
         a = alignment.get(node, "?")
         if a == "?":
             d_019 = anchor_pos_19[i+1, 1] - anchor_pos_19[i, 1]
-            d_037 = anchor_pos_37[i+1, 1] - anchor_pos_37[i, 1] # fix error June 14, 2022
+            d_037 = anchor_pos_37[i+1, 1] - anchor_pos_37[i, 1] # fix error June 14th, 2022
             d = max(d_019, d_037)
             pos += d
             continue
@@ -363,6 +363,8 @@ def main():
     poslist = load_position_list(args)
     
     mapping_table = construct_mapping_table(anchor_dict, anchor_pos_19, anchor_pos_37)
+    
+    #numpy.save("test.chr1.npy",numpy.array(mapping_table))
     
     t = args.Type[0]
     print(t)
