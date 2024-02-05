@@ -195,8 +195,8 @@ def main():
                     metavar = "output filename", help = "output filename")
     parser.add_argument("-a", "--Anchor", type = str, nargs = 1,
                     metavar = "anchor filename", help = "anchor filename, csv")
-    parser.add_argument("-r", "--Bedfile", type = str, nargs = 1,
-                    metavar = "input bed file", help = "B38 bed filename if t == 0, CC bed file if t == 1")
+    parser.add_argument("-b", "--Bed", type = str, nargs = 1,
+                    metavar = "input bed file", help = "input bed file, bed")
     parser.add_argument("-l", "--Alignment", type = str, nargs = 1,
                     metavar = "Directory of the alignment files", help = "Directory of the alignment files")
     parser.add_argument("-t", "--Type", type = str, nargs = 1,
@@ -208,7 +208,7 @@ def main():
     cc = args.CCStrain[0]
     outputfile = args.Output[0]
     anchorfile =args.Anchor[0]
-    refannotationfile = args.Bedfile[0]
+    refannotationfile = args.Bed[0]
     alignment_dir = args.Alignment[0]
     T = int(args.Type[0])
      
@@ -223,7 +223,7 @@ def main():
             
             
     
-    chrlist = range(1,20) # updates
+    
     anchor_info = pd.read_csv(anchorfile, index_col = None)
 
     ############ input as bed files #################
@@ -233,7 +233,23 @@ def main():
     else:
         with open(refannotationfile, 'r') as fp:
             data = fp.readlines()
+    ##################################################
+    
+    ############### get chromolist ##################
+    original_chrlist = range(1,20) # updates
+    chrlist = []
+ 
+    for line in data:
+        itemlist = line.split('\t')
+        for chromo in original_chrlist:
 
+            if itemlist[0] == "chr" + str(chromo) or itemlist[0] == str(chromo):    
+                chrlist.append(chromo)
+    chrlist = sorted(set(chrlist))
+    print(chrlist)
+    #################################################
+    
+    
     for chromo in chrlist:
 
         anchor_info_37 = anchor_info[anchor_info['Chromosome'] == chromo]
@@ -241,16 +257,16 @@ def main():
         anchor_pos_ref = anchor_info_37[['Anchor', 'Pos38']].values
         anchor_pos_37 = anchor_info_37[['Anchor', 'Pos']].values
         
-        print(anchor_pos_ref.shape, anchor_pos_37.shape)
+        print(chromo, anchor_pos_ref.shape, anchor_pos_37.shape)
 
-        alignment = load_alignment_txt(alignment_dir + '/pairwise_alignment_chr%s.txt' % str(chromo))
+        alignment = load_alignment_txt(alignment_dir + '/pairwisealignment_%s.txt' % str(chromo))
         if "SOURCE" in alignment:
             del alignment["SOURCE"]
         mapping_table = construct_mapping_table(alignment, anchor_pos_ref, anchor_pos_37) 
         if T == 0:
             Mapping = dict(zip(mapping_table[:,0], mapping_table[:,2])) # ref:alt
         elif T == 1:
-            Mapping = dict(zip(mapping_table[:,2], mapping_table[:,0])) # ref:alt
+            Mapping = dict(zip(mapping_table[:,2], mapping_table[:,0])) # alt:ref
         else:
             raise "Error Wrong Type of Input"
 
@@ -262,33 +278,34 @@ def main():
             chromo = "X"
 
         for line in data:
-            if isinstance(line,str):
-                itemlist = line.split('\t')
-            else:
-                itemlist = line.decode().split('\t')
-
-            if itemlist[0] == "chr" + str(chromo) or itemlist[0] == chromo:
+            itemlist = line.split('\t')
+            mappint_result = []
+            
+            if itemlist[0] == "chr" + str(chromo) or itemlist[0] == str(chromo):
                 total += 1
-
                 start = int(itemlist[1])
                 end = int(itemlist[2])
+                mappint_result += [itemlist[0], start, end]
 
                 cc_start = Mapping.get(start, "?")
                 cc_end = Mapping.get(end, "?")
 
                 if (cc_start != "?") and (cc_end != "?") and (int(cc_start)>0) and (int(cc_end) >0):
                     avail += 1
-                    itemlist[3] = str(cc_start)
-                    itemlist[4] = str(cc_end)
-                    info.append("\t".join(itemlist))
-        print(chromo, total, avail)
+                    mappint_result += [cc_start, cc_end]
+                    info.append(mappint_result)
+
         print(chromo, total, avail, avail/float(total), len(info))
+        print(info)
         del mapping_table
         del Mapping
 
         with open(outputfile, 'a') as fp:
             for it in info:
-                fp.write(it)        
+                fp.write("\t".join([str(itt) for itt in it]))        
+
+
+
 
 
 
